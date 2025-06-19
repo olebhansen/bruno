@@ -3,7 +3,7 @@ const parser = require('../src/dotenvToJson');
 describe('DotEnv File Parser', () => {
   test('it should parse a simple key-value pair', () => {
     const input = `FOO=bar`;
-    const expected = { FOO: 'bar' };
+    const expected = { default: { FOO: 'bar' }, envs: {} };
     const output = parser(input);
     expect(output).toEqual(expected);
   });
@@ -13,7 +13,7 @@ describe('DotEnv File Parser', () => {
 FOO=bar
 
 `;
-    const expected = { FOO: 'bar' };
+    const expected = { default: { FOO: 'bar' }, envs: {} };
     const output = parser(input);
     expect(output).toEqual(expected);
   });
@@ -25,9 +25,12 @@ BAZ=2
 BEEP=false
 `;
     const expected = {
-      FOO: 'bar',
-      BAZ: '2',
-      BEEP: 'false'
+      default: {
+        FOO: 'bar',
+        BAZ: '2',
+        BEEP: 'false'
+      },
+      envs: {}
     };
     const output = parser(input);
     expect(output).toEqual(expected);
@@ -37,7 +40,7 @@ BEEP=false
     const input = `
 SPACE="  value  "
 `;
-    const expected = { SPACE: '  value  ' };
+    const expected = { default: { SPACE: '  value  ' }, envs: {} };
     const output = parser(input);
     expect(output).toEqual(expected);
   });
@@ -46,7 +49,20 @@ SPACE="  value  "
     const input = `
 SPACE=  value  
 `;
-    const expected = { SPACE: 'value' };
+    const expected = { default: { SPACE: 'value' }, envs: {} };
+    const output = parser(input);
+    expect(output).toEqual(expected);
+  });
+
+  test('it should parse environment specific variables', () => {
+    const input = `dev.API_URL=http://dev\nprod.API_URL=http://prod`;
+    const expected = {
+      default: {},
+      envs: {
+        dev: { API_URL: 'http://dev' },
+        prod: { API_URL: 'http://prod' }
+      }
+    };
     const output = parser(input);
     expect(output).toEqual(expected);
   });

@@ -39,7 +39,7 @@ const CollectionSecurityStore = require('../store/collection-security');
 const UiStateSnapshotStore = require('../store/ui-state-snapshot');
 const interpolateVars = require('./network/interpolate-vars');
 const { getEnvVars, getTreePathFromCollectionToItem, mergeVars, parseBruFileMeta, hydrateRequestWithUuid, transformRequestToSaveToFilesystem } = require('../utils/collection');
-const { getProcessEnvVars } = require('../store/process-env');
+const { getProcessEnvVars, setActiveEnv } = require('../store/process-env');
 const { getOAuth2TokenUsingAuthorizationCode, getOAuth2TokenUsingClientCredentials, getOAuth2TokenUsingPasswordCredentials, refreshOauth2Token } = require('../utils/oauth2');
 const { getCertsAndProxyConfig } = require('./network');
 
@@ -955,6 +955,18 @@ const registerRendererEventHandlers = (mainWindow, watcher, lastOpenedCollection
       uiStateSnapshotStore.update({ type, data });
     } catch (error) {
       throw new Error(error.message);
+    }
+  });
+
+  ipcMain.handle('renderer:select-environment', async (event, { collectionUid, envName }) => {
+    try {
+      setActiveEnv(collectionUid, envName);
+      mainWindow.webContents.send('main:process-env-update', {
+        collectionUid,
+        processEnvVariables: { ...getProcessEnvVars(collectionUid) }
+      });
+    } catch (error) {
+      return Promise.reject(error);
     }
   });
 
