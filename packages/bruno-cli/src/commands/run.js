@@ -423,7 +423,14 @@ const handler = async function (argv) {
       const content = fs.readFileSync(dotEnvPath, 'utf8');
       const jsonData = dotenvToJson(content);
 
-      forOwn(jsonData, (value, key) => {
+      const envName = envVars.__name__ || null;
+      const defaults = jsonData.default || {};
+      const envSpecific = envName && jsonData.envs ? jsonData.envs[envName] || {} : {};
+
+      forOwn(defaults, (value, key) => {
+        processEnvVars[key] = value;
+      });
+      forOwn(envSpecific, (value, key) => {
         processEnvVars[key] = value;
       });
     }

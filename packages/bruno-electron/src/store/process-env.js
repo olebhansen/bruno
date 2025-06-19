@@ -13,25 +13,39 @@ const dotEnvVars = {};
 
 // collectionUid is a hash based on the collection path
 const getProcessEnvVars = (collectionUid) => {
-  // if there are no .env vars for this collection, return the process.env
-  if (!dotEnvVars[collectionUid]) {
-    return {
-      ...process.env
-    };
+  const data = dotEnvVars[collectionUid];
+  if (!data) {
+    return { ...process.env };
   }
 
-  // if there are .env vars for this collection, return the process.env merged with the .env vars
+  const defaults = data.default || {};
+  const envName = data.activeEnv;
+  const envSpecific = envName && data.envs ? data.envs[envName] || {} : {};
+
   return {
     ...process.env,
-    ...dotEnvVars[collectionUid]
+    ...defaults,
+    ...envSpecific
   };
 };
 
 const setDotEnvVars = (collectionUid, envVars) => {
-  dotEnvVars[collectionUid] = envVars;
+  if (!dotEnvVars[collectionUid]) {
+    dotEnvVars[collectionUid] = { activeEnv: null };
+  }
+  dotEnvVars[collectionUid].default = envVars.default || {};
+  dotEnvVars[collectionUid].envs = envVars.envs || {};
+};
+
+const setActiveEnv = (collectionUid, envName) => {
+  if (!dotEnvVars[collectionUid]) {
+    dotEnvVars[collectionUid] = { default: {}, envs: {} };
+  }
+  dotEnvVars[collectionUid].activeEnv = envName;
 };
 
 module.exports = {
   getProcessEnvVars,
-  setDotEnvVars
+  setDotEnvVars,
+  setActiveEnv
 };

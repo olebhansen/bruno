@@ -138,6 +138,18 @@ If Bruno has helped you at work and your teams, please don't forget to share you
 
 Please see [here](publishing.md) for more information.
 
+## .env Files
+
+You can define variables in a `.env` file at the root of your collection. Keys prefixed with `<env>.` will only apply when that environment is selected. For example:
+
+```env
+API_KEY=default
+dev.API_KEY=dev-key
+prod.API_KEY=prod-key
+```
+
+When the **dev** environment is active, `process.env.API_KEY` will resolve to `dev-key`. Without any environment selected, the default value will be used.
+
 ## Stay in touch 🌐
 
 [𝕏 (Twitter)](https://twitter.com/use_bruno) <br />

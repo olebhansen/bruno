@@ -1059,6 +1059,7 @@ export const selectEnvironment = (environmentUid, collectionUid) => (dispatch, g
 
     const { ipcRenderer } = window;
     ipcRenderer.invoke('renderer:update-ui-state-snapshot', { type: 'COLLECTION_ENVIRONMENT', data: { collectionPath: collection?.pathname, environmentName }});
+    ipcRenderer.invoke('renderer:select-environment', { collectionUid, envName: environmentName });
 
     dispatch(_selectEnvironment({ environmentUid, collectionUid }));
     resolve();

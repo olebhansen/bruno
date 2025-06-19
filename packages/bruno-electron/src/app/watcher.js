@@ -9,7 +9,7 @@ const { dotenvToJson } = require('@usebruno/lang');
 const { uuid } = require('../utils/common');
 const { getRequestUid } = require('../cache/requestUids');
 const { decryptString } = require('../utils/encryption');
-const { setDotEnvVars } = require('../store/process-env');
+const { setDotEnvVars, getProcessEnvVars } = require('../store/process-env');
 const { setBrunoConfig } = require('../store/bruno-config');
 const EnvironmentSecretsStore = require('../store/env-secrets');
 const UiStateSnapshot = require('../store/ui-state-snapshot');
@@ -183,7 +183,7 @@ const add = async (win, pathname, collectionUid, collectionPath, useWorkerThread
       const payload = {
         collectionUid,
         processEnvVariables: {
-          ...jsonData
+          ...getProcessEnvVars(collectionUid)
         }
       };
       win.webContents.send('main:process-env-update', payload);
@@ -376,7 +376,7 @@ const change = async (win, pathname, collectionUid, collectionPath) => {
       const payload = {
         collectionUid,
         processEnvVariables: {
-          ...jsonData
+          ...getProcessEnvVars(collectionUid)
         }
       };
       win.webContents.send('main:process-env-update', payload);
