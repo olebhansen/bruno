@@ -16,7 +16,7 @@ if (isDev) {
 }
 
 const { format } = require('url');
-const { BrowserWindow, app, session, Menu, globalShortcut, ipcMain, nativeTheme, shell } = require('electron');
+const { BrowserWindow, app, session, Menu, globalShortcut, ipcMain, nativeTheme, shell, dialog } = require('electron');
 const { setContentSecurityPolicy } = require('electron-util');
 
 if (isDev && process.env.ELECTRON_USER_DATA_PATH) {
@@ -76,6 +76,8 @@ const { cookiesStore } = require('./store/cookies');
 const SystemMonitor = require('./app/system-monitor');
 const { getIsRunningInRosetta } = require('./utils/arch');
 const { handleAppProtocolUrl, getAppProtocolUrlFromArgv } = require('./utils/deeplink');
+const { ENV_FROM_FILE_SWITCH, getEnvFromFilePathFromArgv, readEnvFromFile } = require('./utils/env-from-file');
+const { setEnvFromFileVars } = require('./store/process-env');
 
 const systemMonitor = new SystemMonitor();
 const terminalManager = new TerminalManager();
@@ -204,6 +206,17 @@ if (useSingleInstance && !gotTheLock) {
 // Prepare the renderer once the app is ready
 app.on('ready', async () => {
   initializeShellEnv();
+
+  const envFromFilePath = getEnvFromFilePathFromArgv(process.argv);
+  if (envFromFilePath) {
+    try {
+      const { absolutePath, envVars } = readEnvFromFile(envFromFilePath);
+      setEnvFromFileVars(envVars);
+      console.log(`Loaded ${Object.keys(envVars).length} process.env variables from ${absolutePath}`);
+    } catch (err) {
+      dialog.showErrorBox(`Could not read ${ENV_FROM_FILE_SWITCH} file`, `${envFromFilePath}\n\n${err.message}`);
+    }
+  }
 
   startBenchmark();
 
