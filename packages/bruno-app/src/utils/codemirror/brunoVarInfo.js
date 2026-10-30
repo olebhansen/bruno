@@ -13,6 +13,7 @@ import {
   getVariableScope,
   isVariableSecret,
   getAllVariables,
+  getProcessEnvSources,
   findCollectionByUid,
   findItemInCollectionByItemUid,
   findParentItemInCollection,
@@ -259,6 +260,42 @@ const getCopyButton = (getVariableValue, onCopyCallback) => {
   });
 
   return copyButton;
+};
+
+// Lists the .env files that set a process.env variable, the one in use first
+const createProcessEnvSourcesNote = (collection, name) => {
+  const sources = getProcessEnvSources(collection)
+    .filter((source) => Object.prototype.hasOwnProperty.call(source.variables, name))
+    .reverse();
+
+  const note = document.createElement('div');
+  note.className = 'var-env-sources';
+  note.setAttribute('data-testid', 'var-info-env-sources');
+
+  if (!sources.length) {
+    note.textContent = 'Not set in any .env file';
+    return note;
+  }
+
+  const title = document.createElement('div');
+  title.className = 'var-env-sources-title';
+  title.textContent = 'Env from:';
+  note.appendChild(title);
+
+  const list = document.createElement('ol');
+  sources.forEach((source, index) => {
+    const entry = document.createElement('li');
+    if (index === 0) {
+      entry.textContent = source.label;
+    } else {
+      entry.className = 'overridden';
+      entry.textContent = `${source.label} (overridden)`;
+    }
+    list.appendChild(entry);
+  });
+  note.appendChild(list);
+
+  return note;
 };
 
 export const renderVarInfo = (token, options) => {
@@ -1015,6 +1052,10 @@ export const renderVarInfo = (token, options) => {
   }
 
   into.appendChild(valueContainer);
+
+  if (scopeInfo.type === 'process.env' && collection) {
+    into.appendChild(createProcessEnvSourcesNote(collection, variableName.slice('process.env.'.length)));
+  }
 
   if (valueContainer._addToSwitcher) {
     into.appendChild(valueContainer._addToSwitcher);

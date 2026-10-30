@@ -173,14 +173,16 @@ describe('getProcessEnvVars with a --dotenv-dir folder', () => {
     expect(getProcessEnvVars(collectionUid).USER_ROOT_ENV).toBeUndefined();
   });
 
-  it('lists the user files for a collection with its subfolder merged over the root', () => {
+  it('lists the user files for a collection, keeping the folder root and its subfolder apart', () => {
     expect(getUserDotEnvFiles(collectionName)).toEqual({
-      '.env': { ...layers.userRoot, ...layers.userCollection },
-      '.env.prod': { ...layers.userRootEnv, ...layers.userCollectionEnv }
+      root: { '.env': layers.userRoot, '.env.prod': layers.userRootEnv },
+      collection: { '.env': layers.userCollection, '.env.prod': layers.userCollectionEnv },
+      collectionFolderName: collectionName
     });
     expect(getUserDotEnvFiles('Altinn Profile')).toEqual({
-      '.env': layers.userRoot,
-      '.env.prod': layers.userRootEnv
+      root: { '.env': layers.userRoot, '.env.prod': layers.userRootEnv },
+      collection: {},
+      collectionFolderName: null
     });
   });
 });
