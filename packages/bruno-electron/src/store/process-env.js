@@ -43,16 +43,16 @@ const getUserDotEnvVars = (collectionName, filename) => {
   };
 };
 
-// The --dotenv-dir files that apply to a collection, by filename, with its subfolder merged over the root
+// The --dotenv-dir files that apply to a collection, by filename: the folder root, and the
+// subfolder named after the collection when there is one
 const getUserDotEnvFiles = (collectionName) => {
-  const collectionFiles = (collectionName && userCollectionDotEnvVars[collectionName]) || {};
-  const filenames = new Set([...Object.keys(userDotEnvVars), ...Object.keys(collectionFiles)]);
+  const hasCollectionFolder = Boolean(collectionName && userCollectionDotEnvVars[collectionName]);
 
-  const files = {};
-  for (const filename of filenames) {
-    files[filename] = getUserDotEnvVars(collectionName, filename);
-  }
-  return files;
+  return {
+    root: { ...userDotEnvVars },
+    collection: hasCollectionFolder ? { ...userCollectionDotEnvVars[collectionName] } : {},
+    collectionFolderName: hasCollectionFolder ? collectionName : null
+  };
 };
 
 // collectionUid is a hash based on the collection path

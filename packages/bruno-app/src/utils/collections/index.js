@@ -1312,21 +1312,32 @@ export const getTotalRequestCountInCollection = (collection) => {
   return count;
 };
 
-// Mirrors getProcessEnvVars in bruno-electron: environment specific files override general ones,
-// and within each group the collection root overrides the --dotenv-dir folder
-const getMergedProcessEnvVariables = (collection) => {
-  const { processEnvVariables = {}, workspaceProcessEnvVariables = {}, userDotEnvFiles = {} } = collection;
+// The sources of process.env variables known to the renderer, lowest priority first, each with a
+// short label for the UI. Mirrors getProcessEnvVars in bruno-electron: environment specific files
+// override general ones, and within each group the collection root overrides the --dotenv-dir
+// folder. The OS environment is left out, the renderer does not receive it.
+export const getProcessEnvSources = (collection) => {
+  const { processEnvVariables, workspaceProcessEnvVariables, userDotEnvFiles = {} } = collection;
+  const { root: userRootFiles = {}, collection: userCollectionFiles = {}, collectionFolderName } = userDotEnvFiles;
   const activeEnvironment = findEnvironmentInCollection(collection, collection.activeEnvironmentUid);
   const envFilename = activeEnvironment ? `.env.${activeEnvironment.name}` : null;
   const collectionEnvFile = envFilename ? find(collection.dotEnvFiles, (f) => f.filename === envFilename) : null;
 
-  return {
-    ...userDotEnvFiles['.env'],
-    ...workspaceProcessEnvVariables,
-    ...processEnvVariables,
-    ...(envFilename ? userDotEnvFiles[envFilename] : {}),
-    ...(collectionEnvFile ? toVariablesMap(collectionEnvFile.variables) : {})
-  };
+  const sources = [
+    { label: '--dotenv-dir/.env', variables: userRootFiles['.env'] },
+    { label: `--dotenv-dir/${collectionFolderName}/.env`, variables: userCollectionFiles['.env'] },
+    { label: 'workspace/.env', variables: workspaceProcessEnvVariables },
+    { label: 'collection/.env', variables: processEnvVariables }
+  ];
+  if (envFilename) {
+    sources.push(
+      { label: `--dotenv-dir/${envFilename}`, variables: userRootFiles[envFilename] },
+      { label: `--dotenv-dir/${collectionFolderName}/${envFilename}`, variables: userCollectionFiles[envFilename] },
+      { label: `collection/${envFilename}`, variables: collectionEnvFile ? toVariablesMap(collectionEnvFile.variables) : null }
+    );
+  }
+
+  return sources.filter((source) => source.variables);
 };
 
 export const getAllVariables = (collection, item) => {
@@ -1339,7 +1350,7 @@ export const getAllVariables = (collection, item) => {
 
   const { runtimeVariables = {}, promptVariables = {} } = collection;
 
-  const mergedProcessEnvVariables = getMergedProcessEnvVariables(collection);
+  const mergedProcessEnvVariables = Object.assign({}, ...getProcessEnvSources(collection).map((source) => source.variables));
 
   const mergedVariables = {
     ...folderVariables,

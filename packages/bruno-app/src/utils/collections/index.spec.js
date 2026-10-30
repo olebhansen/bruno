@@ -17,7 +17,8 @@ import {
   getCollectionVersion,
   isCollectionItemCollapsed,
   getWorkspaceCollections,
-  getAllVariables
+  getAllVariables,
+  getProcessEnvSources
 } from './index';
 import * as platformUtils from 'utils/common/platform';
 
@@ -1062,8 +1063,12 @@ describe('getAllVariables — --dotenv-dir files', () => {
     environments: [{ uid: 'env-prod', name: 'prod', variables: [] }],
     activeEnvironmentUid,
     userDotEnvFiles: {
-      '.env': { LAYER: 'user .env', USER_BASE: '1' },
-      '.env.prod': { LAYER: 'user .env.prod', PASSWORD: 'user-secret' }
+      root: {
+        '.env': { LAYER: 'user .env', USER_BASE: '1' },
+        '.env.prod': { LAYER: 'user .env.prod', PASSWORD: 'user-secret' }
+      },
+      collection: {},
+      collectionFolderName: null
     },
     workspaceProcessEnvVariables: { LAYER: 'workspace .env' },
     processEnvVariables: { LAYER: 'collection .env', PASSWORD: 'committed-placeholder' },
@@ -1092,5 +1097,50 @@ describe('getAllVariables — --dotenv-dir files', () => {
     expect(env.LAYER).toBe('collection .env');
     expect(env.PASSWORD).toBe('committed-placeholder');
     expect(env.USER_BASE).toBe('1');
+  });
+});
+
+describe('getProcessEnvSources', () => {
+  const dotEnvVariable = (name, value) => ({ name, value, enabled: true, secret: false });
+
+  const collection = {
+    uid: 'c1',
+    environments: [{ uid: 'env-prod', name: 'prod', variables: [] }],
+    activeEnvironmentUid: 'env-prod',
+    userDotEnvFiles: {
+      root: { '.env': { A: 'root' }, '.env.prod': { A: 'root prod' } },
+      collection: { '.env': { A: 'sub' }, '.env.prod': { A: 'sub prod' } },
+      collectionFolderName: 'Altinn Notifications'
+    },
+    workspaceProcessEnvVariables: { A: 'workspace' },
+    processEnvVariables: { A: 'collection' },
+    dotEnvFiles: [{ filename: '.env.prod', exists: true, variables: [dotEnvVariable('A', 'collection prod')] }]
+  };
+
+  it('lists every source lowest priority first, with labels', () => {
+    expect(getProcessEnvSources(collection).map((source) => source.label)).toEqual([
+      '--dotenv-dir/.env',
+      '--dotenv-dir/Altinn Notifications/.env',
+      'workspace/.env',
+      'collection/.env',
+      '--dotenv-dir/.env.prod',
+      '--dotenv-dir/Altinn Notifications/.env.prod',
+      'collection/.env.prod'
+    ]);
+  });
+
+  it('leaves out sources that do not exist', () => {
+    const labels = getProcessEnvSources({
+      ...collection,
+      activeEnvironmentUid: null,
+      userDotEnvFiles: { root: { '.env': { A: 'root' } }, collection: {}, collectionFolderName: null },
+      workspaceProcessEnvVariables: undefined
+    }).map((source) => source.label);
+
+    expect(labels).toEqual(['--dotenv-dir/.env', 'collection/.env']);
+  });
+
+  it('is what getAllVariables merges, the last source winning', () => {
+    expect(getAllVariables({ ...collection, items: [], root: {} }).process.env.A).toBe('collection prod');
   });
 });

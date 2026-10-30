@@ -8,7 +8,8 @@ import {
   getTreePathFromCollectionToItem,
   findCollectionByUid,
   findItemInCollectionByItemUid,
-  getAvailableAddToScopes
+  getAvailableAddToScopes,
+  getProcessEnvSources
 } from 'utils/collections';
 import { updateVariableInScope, addEnvironment, selectEnvironment } from 'providers/ReduxStore/slices/collections/actions';
 import { COPY_SUCCESS_TIMEOUT, extractVariableInfo, renderVarInfo } from './brunoVarInfo';
@@ -56,6 +57,7 @@ jest.mock('utils/collections', () => ({
   findItemInCollectionByItemUid: jest.fn(),
   findParentItemInCollection: jest.fn(),
   getAvailableAddToScopes: jest.fn(() => []),
+  getProcessEnvSources: jest.fn(() => []),
   isItemARequest: jest.fn((item) => !!item && item.type !== 'folder')
 }));
 
@@ -1131,5 +1133,52 @@ describe('renderVarInfo', () => {
       expect(warningNote).not.toBeNull();
       expect(warningNote.textContent).toContain('OAuth2 token not found');
     });
+  });
+});
+
+describe('renderVarInfo — process.env sources', () => {
+  const collection = { uid: 'c1' };
+
+  const renderProcessEnv = (name, options = {}) => renderVarInfo(
+    { string: `{{process.env.${name}}}` },
+    { variables: { process: { env: { [name]: 'value' } } }, collection, item: null, ...options }
+  );
+
+  beforeEach(() => {
+    getProcessEnvSources.mockReturnValue([
+      { label: '--dotenv-dir/.env', variables: { TOKEN: 'root', OTHER: '1' } },
+      { label: 'collection/.env', variables: { TOKEN: 'collection' } },
+      { label: '--dotenv-dir/Altinn Notifications/.env.prod', variables: { TOKEN: 'secret' } }
+    ]);
+  });
+
+  it('lists the files that set the variable, the one in use first', () => {
+    const entries = renderProcessEnv('TOKEN').querySelectorAll('[data-testid="var-info-env-sources"] li');
+
+    expect(Array.from(entries).map((entry) => entry.textContent)).toEqual([
+      '--dotenv-dir/Altinn Notifications/.env.prod',
+      'collection/.env (overridden)',
+      '--dotenv-dir/.env (overridden)'
+    ]);
+    expect(entries[0].className).toBe('');
+    expect(entries[1].className).toBe('overridden');
+  });
+
+  it('lists only the files that set this variable', () => {
+    const entries = renderProcessEnv('OTHER').querySelectorAll('[data-testid="var-info-env-sources"] li');
+
+    expect(Array.from(entries).map((entry) => entry.textContent)).toEqual(['--dotenv-dir/.env']);
+  });
+
+  it('says so when no .env file sets the variable', () => {
+    const note = renderProcessEnv('PATH').querySelector('[data-testid="var-info-env-sources"]');
+
+    expect(note.textContent).toBe('Not set in any .env file');
+  });
+
+  it('shows no sources without a collection', () => {
+    const result = renderProcessEnv('TOKEN', { collection: null });
+
+    expect(result.querySelector('[data-testid="var-info-env-sources"]')).toBeNull();
   });
 });

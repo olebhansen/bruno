@@ -644,6 +644,22 @@ const GlobalStyle = createGlobalStyle`
     margin-top: 0.25rem;
   }
 
+  .CodeMirror-brunoVarInfo .var-env-sources {
+    font-size: ${(props) => props.theme.font.size.xs};
+    color: ${(props) => props.theme.dropdown.mutedText};
+    margin-top: 0.375rem;
+
+    ol {
+      list-style: decimal;
+      padding-left: 1.25rem;
+      margin: 0.125rem 0 0;
+    }
+
+    li.overridden {
+      opacity: 0.6;
+    }
+  }
+
   .CodeMirror-brunoVarInfo .var-warning-note {
     font-size: 0.75rem;
     color: ${(props) => props.theme.colors.text.danger};
