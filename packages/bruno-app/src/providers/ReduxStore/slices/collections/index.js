@@ -600,6 +600,14 @@ export const collectionsSlice = createSlice({
         collection.processEnvVariables = processEnvVariables;
       }
     },
+    userDotEnvUpdateEvent: (state, action) => {
+      const { collectionUid, files } = action.payload;
+      const collection = findCollectionByUid(state.collections, collectionUid);
+
+      if (collection) {
+        collection.userDotEnvFiles = files;
+      }
+    },
     workspaceEnvUpdateEvent: (state, action) => {
       const { processEnvVariables } = action.payload;
       state.collections.forEach((collection) => {
@@ -4289,6 +4297,7 @@ export const {
   runtimeVariablesUpdateEvent,
   processEnvUpdateEvent,
   workspaceEnvUpdateEvent,
+  userDotEnvUpdateEvent,
   setDotEnvVariables,
   requestCancelled,
   responseReceived,

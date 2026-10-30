@@ -98,6 +98,7 @@ export const prepareCollectionForExport = (collection, version) => {
   delete collection.uid;
   delete collection.processEnvVariables;
   delete collection.workspaceProcessEnvVariables;
+  delete collection.userDotEnvFiles;
 
   collection.items = filterTransientItems(collection.items);
 
