@@ -1312,16 +1312,21 @@ export const getTotalRequestCountInCollection = (collection) => {
   return count;
 };
 
-// Mirrors getProcessEnvVars in bruno-electron: `.env.<environment name>` in the collection root
-// overrides `.env` while that environment is active
-const getActiveEnvironmentDotEnvVariables = (collection) => {
+// Mirrors getProcessEnvVars in bruno-electron: environment specific files override general ones,
+// and within each group the collection root overrides the --dotenv-dir folder
+const getMergedProcessEnvVariables = (collection) => {
+  const { processEnvVariables = {}, workspaceProcessEnvVariables = {}, userDotEnvFiles = {} } = collection;
   const activeEnvironment = findEnvironmentInCollection(collection, collection.activeEnvironmentUid);
-  if (!activeEnvironment) {
-    return {};
-  }
+  const envFilename = activeEnvironment ? `.env.${activeEnvironment.name}` : null;
+  const collectionEnvFile = envFilename ? find(collection.dotEnvFiles, (f) => f.filename === envFilename) : null;
 
-  const dotEnvFile = find(collection.dotEnvFiles, (f) => f.filename === `.env.${activeEnvironment.name}`);
-  return dotEnvFile ? toVariablesMap(dotEnvFile.variables) : {};
+  return {
+    ...userDotEnvFiles['.env'],
+    ...workspaceProcessEnvVariables,
+    ...processEnvVariables,
+    ...(envFilename ? userDotEnvFiles[envFilename] : {}),
+    ...(collectionEnvFile ? toVariablesMap(collectionEnvFile.variables) : {})
+  };
 };
 
 export const getAllVariables = (collection, item) => {
@@ -1332,14 +1337,9 @@ export const getAllVariables = (collection, item) => {
   const pathParams = getPathParams(item);
   const { globalEnvironmentVariables = {} } = collection;
 
-  const { processEnvVariables = {}, runtimeVariables = {}, promptVariables = {}, workspaceProcessEnvVariables = {} } = collection;
+  const { runtimeVariables = {}, promptVariables = {} } = collection;
 
-  // Merge workspace and collection processEnvVariables (collection takes priority)
-  const mergedProcessEnvVariables = {
-    ...workspaceProcessEnvVariables,
-    ...processEnvVariables,
-    ...getActiveEnvironmentDotEnvVariables(collection)
-  };
+  const mergedProcessEnvVariables = getMergedProcessEnvVariables(collection);
 
   const mergedVariables = {
     ...folderVariables,

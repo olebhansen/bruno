@@ -16,7 +16,7 @@ if (isDev) {
 }
 
 const { format } = require('url');
-const { BrowserWindow, app, session, Menu, globalShortcut, ipcMain, nativeTheme, shell } = require('electron');
+const { BrowserWindow, app, session, Menu, globalShortcut, ipcMain, nativeTheme, shell, dialog } = require('electron');
 const { setContentSecurityPolicy } = require('electron-util');
 
 if (isDev && process.env.ELECTRON_USER_DATA_PATH) {
@@ -76,6 +76,8 @@ const { cookiesStore } = require('./store/cookies');
 const SystemMonitor = require('./app/system-monitor');
 const { getIsRunningInRosetta } = require('./utils/arch');
 const { handleAppProtocolUrl, getAppProtocolUrlFromArgv } = require('./utils/deeplink');
+const { DOTENV_DIR_SWITCH, getDotEnvDirFromArgv, isDirectory } = require('./utils/dotenv-dir');
+const dotEnvWatcher = require('./app/dotenv-watcher');
 
 const systemMonitor = new SystemMonitor();
 const terminalManager = new TerminalManager();
@@ -525,6 +527,15 @@ app.on('ready', async () => {
       isRunningInRosetta: getIsRunningInRosetta()
     });
   });
+
+  const dotEnvDir = getDotEnvDirFromArgv(process.argv);
+  if (dotEnvDir) {
+    if (isDirectory(dotEnvDir)) {
+      dotEnvWatcher.addUserDirWatcher(mainWindow, dotEnvDir);
+    } else {
+      dialog.showErrorBox(`${DOTENV_DIR_SWITCH} is not a folder`, `${dotEnvDir}\n\nThe app starts without it.`);
+    }
+  }
 
   // register all ipc handlers
   registerNetworkIpc(mainWindow);

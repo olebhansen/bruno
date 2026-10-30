@@ -115,6 +115,10 @@ const builder = async (yargs) => {
       describe: 'Path to environment file (.bru or .json) - absolute or relative',
       type: 'string'
     })
+    .option('dotenv-dir', {
+      describe: 'Folder with .env and .env.<environment> files kept outside the collection, absolute or relative to the current directory. A subfolder named after the collection applies to that collection only',
+      type: 'string'
+    })
     .option('global-env', {
       describe: 'Global environment name (requires collection to be in a workspace)',
       type: 'string'
@@ -234,6 +238,7 @@ const builder = async (yargs) => {
     .example('$0 run request.bru', 'Run a request')
     .example('$0 run request.bru --env local', 'Run a request with the environment set to local')
     .example('$0 run request.bru --env-file env.bru', 'Run a request with the environment from env.bru file')
+    .example('$0 run --env prod --dotenv-dir ~/bruno-secrets', 'Run with process.env values from ~/bruno-secrets')
     .example('$0 run folder', 'Run all requests in a folder')
     .example('$0 run folder -r', 'Run all requests in a folder recursively')
     .example('$0 run request.bru folder', 'Run a request and all requests in a folder')
@@ -304,6 +309,7 @@ const handler = async function (argv) {
       disableCookies,
       env,
       envFile,
+      dotenvDir,
       globalEnv,
       workspacePath,
       envVar,
@@ -658,10 +664,26 @@ const handler = async function (argv) {
       formats['junit'] = reporterJunit;
     }
 
-    // load .env, then .env.<environment name> for the selected environment, from the root of the
-    // collection. Mirrors getProcessEnvVars in bruno-electron: the environment specific file
-    // overrides .env per key. The name can come from an environment file's own `name`, so only a
-    // bare file name is accepted.
+    // load the dotenv files, each overriding the ones before it per key. Mirrors getProcessEnvVars in
+    // bruno-electron: environment specific files override general ones, and within each group the
+    // collection root overrides the --dotenv-dir folder and its subfolder named after the collection.
+    // The environment and collection names come from files in the collection, so only bare file
+    // names are accepted.
+    const dotEnvFolders = [];
+    if (dotenvDir) {
+      const resolvedDotEnvDir = path.resolve(dotenvDir);
+      const dotEnvDirStat = await fs.promises.stat(resolvedDotEnvDir).catch(() => null);
+      if (!dotEnvDirStat || !dotEnvDirStat.isDirectory()) {
+        console.error(chalk.red(`Dotenv folder not found: `) + chalk.dim(dotenvDir));
+        process.exit(constants.EXIT_STATUS.ERROR_FILE_NOT_FOUND);
+      }
+      dotEnvFolders.push(resolvedDotEnvDir);
+      if (isSafeFileName(brunoConfig?.name)) {
+        dotEnvFolders.push(path.join(resolvedDotEnvDir, brunoConfig.name));
+      }
+    }
+    dotEnvFolders.push(collectionPath);
+
     const processEnvVars = {
       ...process.env
     };
@@ -671,14 +693,16 @@ const handler = async function (argv) {
       dotEnvFilenames.push(`.env.${selectedEnvironmentName}`);
     }
     for (const dotEnvFilename of dotEnvFilenames) {
-      const dotEnvPath = path.join(collectionPath, dotEnvFilename);
-      if (await exists(dotEnvPath)) {
-        const content = fs.readFileSync(dotEnvPath, 'utf8');
-        const jsonData = parseDotEnv(content);
+      for (const dotEnvFolder of dotEnvFolders) {
+        const dotEnvPath = path.join(dotEnvFolder, dotEnvFilename);
+        if (await exists(dotEnvPath)) {
+          const content = fs.readFileSync(dotEnvPath, 'utf8');
+          const jsonData = parseDotEnv(content);
 
-        forOwn(jsonData, (value, key) => {
-          processEnvVars[key] = value;
-        });
+          forOwn(jsonData, (value, key) => {
+            processEnvVars[key] = value;
+          });
+        }
       }
     }
 

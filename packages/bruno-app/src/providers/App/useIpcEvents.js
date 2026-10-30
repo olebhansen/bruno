@@ -26,6 +26,7 @@ import {
   collectionUnlinkFileEvent,
   processEnvUpdateEvent,
   workspaceEnvUpdateEvent,
+  userDotEnvUpdateEvent,
   requestCancelled,
   runFolderEvent,
   runRequestEvent,
@@ -267,6 +268,10 @@ const useIpcEvents = () => {
       dispatch(processEnvUpdateEvent(val));
     });
 
+    const removeUserDotEnvUpdatesListener = ipcRenderer.on('main:user-dotenv-update', (val) => {
+      dispatch(userDotEnvUpdateEvent(val));
+    });
+
     const removeWorkspaceDotEnvUpdatesListener = ipcRenderer.on('main:workspace-dotenv-update', (val) => {
       dispatch(workspaceDotEnvUpdateEvent(val));
       dispatch(workspaceEnvUpdateEvent({ processEnvVariables: val.processEnvVariables }));
@@ -446,6 +451,7 @@ const useIpcEvents = () => {
       removeRunFolderEventListener();
       removeRunRequestEventListener();
       removeProcessEnvUpdatesListener();
+      removeUserDotEnvUpdatesListener();
       removeWorkspaceDotEnvUpdatesListener();
       removeDotEnvFileUpdateListener();
       removeConsoleLogListener();

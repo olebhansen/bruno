@@ -2,7 +2,12 @@ const fs = require('fs');
 const path = require('path');
 const chokidar = require('chokidar');
 const { parseDotEnv } = require('@usebruno/filestore');
+const { getBrunoConfig } = require('../store/bruno-config');
+const { isDotEnvFile, locateUserDotEnvFile } = require('../utils/dotenv-dir');
 const {
+  getUserDotEnvFiles,
+  setUserDotEnvVars,
+  clearUserDotEnvVars,
   setDotEnvVars,
   clearDotEnvVars,
   setEnvSpecificDotEnvVars,
@@ -11,10 +16,6 @@ const {
   setWorkspaceDotEnvVars,
   clearWorkspaceDotEnvVars
 } = require('../store/process-env');
-
-const isDotEnvFile = (filename) => {
-  return filename === '.env' || filename.startsWith('.env.');
-};
 
 // `.env.<environment name>` holds the process.env variables for that environment
 const getEnvironmentNameFromDotEnvFilename = (filename) => filename.slice('.env.'.length);
@@ -104,10 +105,22 @@ const createUnlinkHandler = (win, options) => (pathname) => {
   }
 };
 
+const sendUserDotEnvFiles = (win, collectionUid) => {
+  if (win.isDestroyed()) {
+    return;
+  }
+  win.webContents.send('main:user-dotenv-update', {
+    collectionUid,
+    files: getUserDotEnvFiles(getBrunoConfig(collectionUid).name)
+  });
+};
+
 class DotEnvWatcher {
   constructor() {
     this.collectionWatchers = new Map();
+    this.collectionUids = new Map();
     this.workspaceWatchers = new Map();
+    this.userDirWatcher = null;
   }
 
   addCollectionWatcher(win, collectionPath, collectionUid) {
@@ -146,6 +159,11 @@ class DotEnvWatcher {
     });
 
     this.collectionWatchers.set(collectionPath, watcher);
+    this.collectionUids.set(collectionPath, collectionUid);
+
+    if (this.userDirWatcher) {
+      sendUserDotEnvFiles(win, collectionUid);
+    }
   }
 
   removeCollectionWatcher(collectionPath, collectionUid) {
@@ -153,6 +171,7 @@ class DotEnvWatcher {
       this.collectionWatchers.get(collectionPath).close();
       this.collectionWatchers.delete(collectionPath);
     }
+    this.collectionUids.delete(collectionPath);
     if (collectionUid) {
       clearDotEnvVars(collectionUid);
       clearAllEnvSpecificDotEnvVars(collectionUid);
@@ -212,6 +231,58 @@ class DotEnvWatcher {
     return this.workspaceWatchers.has(workspacePath);
   }
 
+  addUserDirWatcher(win, dirPath) {
+    const resolvedDirPath = path.resolve(dirPath);
+
+    const sendToAllCollections = () => {
+      for (const collectionUid of this.collectionUids.values()) {
+        sendUserDotEnvFiles(win, collectionUid);
+      }
+    };
+
+    const handleFile = (pathname) => {
+      const location = locateUserDotEnvFile(resolvedDirPath, pathname);
+      if (!location) {
+        return;
+      }
+      try {
+        const jsonData = parseDotEnv(fs.readFileSync(pathname, 'utf8'));
+        setUserDotEnvVars(location.collectionName, location.filename, jsonData);
+        sendToAllCollections();
+      } catch (err) {
+        console.error(`Error processing dotenv file ${pathname}:`, err);
+      }
+    };
+
+    const handleUnlink = (pathname) => {
+      const location = locateUserDotEnvFile(resolvedDirPath, pathname);
+      if (!location) {
+        return;
+      }
+      clearUserDotEnvVars(location.collectionName, location.filename);
+      sendToAllCollections();
+    };
+
+    const watcher = chokidar.watch(resolvedDirPath, {
+      ...DEFAULT_WATCHER_OPTIONS,
+      depth: 1,
+      disableGlobbing: true,
+      awaitWriteFinish: {
+        stabilityThreshold: 80,
+        pollInterval: 100
+      }
+    });
+
+    watcher.on('add', handleFile);
+    watcher.on('change', handleFile);
+    watcher.on('unlink', handleUnlink);
+    watcher.on('error', (err) => {
+      console.error(`Dotenv folder watcher error for ${resolvedDirPath}:`, err);
+    });
+
+    this.userDirWatcher = watcher;
+  }
+
   closeAll() {
     const pending = [];
     const collect = (watcher) => {
@@ -226,6 +297,11 @@ class DotEnvWatcher {
 
     for (const [path, watcher] of this.workspaceWatchers) collect(watcher);
     this.workspaceWatchers.clear();
+
+    if (this.userDirWatcher) {
+      collect(this.userDirWatcher);
+      this.userDirWatcher = null;
+    }
 
     return Promise.allSettled(pending);
   }

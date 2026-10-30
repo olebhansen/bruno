@@ -1051,3 +1051,46 @@ describe('getAllVariables — environment specific .env files', () => {
     expect(env.TOKEN).toBe('base-token');
   });
 });
+
+describe('getAllVariables — --dotenv-dir files', () => {
+  const dotEnvVariable = (name, value) => ({ name, value, enabled: true, secret: false });
+
+  const buildCollection = ({ activeEnvironmentUid = 'env-prod', withCollectionEnvFile = true } = {}) => ({
+    uid: 'c1',
+    items: [],
+    root: {},
+    environments: [{ uid: 'env-prod', name: 'prod', variables: [] }],
+    activeEnvironmentUid,
+    userDotEnvFiles: {
+      '.env': { LAYER: 'user .env', USER_BASE: '1' },
+      '.env.prod': { LAYER: 'user .env.prod', PASSWORD: 'user-secret' }
+    },
+    workspaceProcessEnvVariables: { LAYER: 'workspace .env' },
+    processEnvVariables: { LAYER: 'collection .env', PASSWORD: 'committed-placeholder' },
+    dotEnvFiles: withCollectionEnvFile
+      ? [{ filename: '.env.prod', exists: true, variables: [dotEnvVariable('LAYER', 'collection .env.prod')] }]
+      : []
+  });
+
+  it('applies the user files under the collection files within each group', () => {
+    const { env } = getAllVariables(buildCollection()).process;
+
+    expect(env.LAYER).toBe('collection .env.prod');
+    expect(env.USER_BASE).toBe('1');
+  });
+
+  it('lets a user environment file override the collection .env', () => {
+    const { env } = getAllVariables(buildCollection({ withCollectionEnvFile: false })).process;
+
+    expect(env.LAYER).toBe('user .env.prod');
+    expect(env.PASSWORD).toBe('user-secret');
+  });
+
+  it('applies only the general user file when no environment is active', () => {
+    const { env } = getAllVariables(buildCollection({ activeEnvironmentUid: null })).process;
+
+    expect(env.LAYER).toBe('collection .env');
+    expect(env.PASSWORD).toBe('committed-placeholder');
+    expect(env.USER_BASE).toBe('1');
+  });
+});
