@@ -60,6 +60,7 @@ const sqliteService = require('./services/sqlite');
 const { clearAllRunnerResponses } = require('./services/runner-exchange');
 const { registerWsdlIpc } = require('./ipc/wsdl');
 const collectionWatcher = require('./app/collection-watcher');
+const gitHeadWatcher = require('./app/git-head-watcher');
 const WorkspaceWatcher = require('./app/workspace-watcher');
 const ApiSpecWatcher = require('./app/apiSpecsWatcher');
 const { loadWindowState, saveBounds, saveMaximized } = require('./utils/window');
@@ -147,7 +148,8 @@ const focusMainWindow = () => {
 const closeAllWatchers = () => Promise.allSettled([
   collectionWatcher.closeAllWatchers(),
   workspaceWatcher.closeAllWatchers(),
-  apiSpecWatcher.closeAllWatchers()
+  apiSpecWatcher.closeAllWatchers(),
+  gitHeadWatcher.closeAllWatchers()
 ]);
 
 // Parse protocol URL from command line arguments (if any)

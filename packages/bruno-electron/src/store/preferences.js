@@ -71,7 +71,8 @@ const defaultPreferences = {
     interval: 1000
   },
   display: {
-    zoomPercentage: 100
+    zoomPercentage: 100,
+    collectionNameTemplate: '{name}'
   },
   cache: {
     sslSession: {
@@ -193,7 +194,8 @@ const preferencesSchema = Yup.object().shape({
     interval: Yup.number().min(100)
   }),
   display: Yup.object({
-    zoomPercentage: Yup.number().min(50).max(150)
+    zoomPercentage: Yup.number().min(50).max(150),
+    collectionNameTemplate: Yup.string().max(200)
   }),
   cache: Yup.object({
     sslSession: Yup.object({

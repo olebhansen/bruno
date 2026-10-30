@@ -8,9 +8,13 @@ jest.mock('../utils/filesystem', () => ({
   createDirectory: jest.fn(),
   removeDirectory: jest.fn()
 }));
+jest.mock('../app/git-head-watcher', () => ({
+  addCollectionWatcher: jest.fn()
+}));
 
 const { getCollectionGitRepoUrl, listBranchesForRemoteUrl } = require('../utils/git');
-const { getCollectionGitRemoteUrl, handleListRemoteBranches } = require('./git');
+const gitHeadWatcher = require('../app/git-head-watcher');
+const { getCollectionGitRemoteUrl, handleListRemoteBranches, watchCollectionGitHead } = require('./git');
 
 describe('getCollectionGitRemoteUrl', () => {
   beforeEach(() => {
@@ -61,5 +65,28 @@ describe('handleListRemoteBranches', () => {
     await expect(handleListRemoteBranches({}, { url: '--upload-pack=touch /tmp/pwned' }))
       .rejects.toThrow('Repository URL is not valid');
     expect(listBranchesForRemoteUrl).not.toHaveBeenCalled();
+  });
+});
+
+describe('watchCollectionGitHead', () => {
+  const mainWindow = {};
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('starts watching and returns the current git head', () => {
+    gitHeadWatcher.addCollectionWatcher.mockReturnValue({ branch: 'main', rootFolder: 'repo' });
+
+    expect(watchCollectionGitHead(mainWindow, { collectionUid: 'c1', collectionPath: '/tmp/repo' })).toEqual({
+      branch: 'main',
+      rootFolder: 'repo'
+    });
+    expect(gitHeadWatcher.addCollectionWatcher).toHaveBeenCalledWith(mainWindow, '/tmp/repo', 'c1');
+  });
+
+  it('rejects a missing collection path', () => {
+    expect(() => watchCollectionGitHead(mainWindow, { collectionUid: 'c1' })).toThrow('Collection uid and path are required');
+    expect(gitHeadWatcher.addCollectionWatcher).not.toHaveBeenCalled();
   });
 });

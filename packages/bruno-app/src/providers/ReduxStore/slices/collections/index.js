@@ -300,6 +300,12 @@ export const collectionsSlice = createSlice({
         collection.securityConfig = action.payload.securityConfig;
       }
     },
+    setCollectionGitHead: (state, action) => {
+      const collection = findCollectionByUid(state.collections, action.payload.collectionUid);
+      if (collection) {
+        collection.gitHead = action.payload.gitHead;
+      }
+    },
     updateCollectionVersion: (state, action) => {
       const collection = findCollectionByUid(state.collections, action.payload.collectionUid);
       if (collection) {
@@ -4267,6 +4273,7 @@ export const {
   updateCollectionLoadingState,
   collectionLoadedFromTree,
   setCollectionSecurityConfig,
+  setCollectionGitHead,
   updateCollectionVersion,
   brunoConfigUpdateEvent,
   renameCollection,

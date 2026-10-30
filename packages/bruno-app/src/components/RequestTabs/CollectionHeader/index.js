@@ -48,6 +48,7 @@ import classNames from 'classnames';
 import StyledWrapper from './StyledWrapper';
 import { useTheme } from 'providers/Theme';
 import { useBetaFeature, BETA_FEATURES } from 'utils/beta-features';
+import useCollectionDisplayName from 'hooks/useCollectionDisplayName';
 import CreateMockServerModal from 'components/MockServer/CreateMockServerModal';
 import { getMockServerInstances, openMockServerDashboard } from 'utils/mock-server/mock-server-instances';
 
@@ -72,6 +73,7 @@ const CollectionHeader = ({ collection, isScratchCollection }) => {
   const preferences = useSelector((state) => state.app.preferences);
   const isAiEnabled = get(preferences, 'ai.enabled', false);
   const isAiSidebarOpen = useSelector((state) => state.chat.isOpen);
+  const getCollectionDisplayName = useCollectionDisplayName();
 
   // Get the current active workspace
   const currentWorkspace = workspaces.find((w) => w.uid === activeWorkspaceUid);
@@ -231,7 +233,7 @@ const CollectionHeader = ({ collection, isScratchCollection }) => {
   // Display name and icon based on context
   const displayName = isScratchCollection
     ? (currentWorkspace?.name || 'Untitled Workspace')
-    : (collection.name || 'Untitled Collection');
+    : (getCollectionDisplayName(collection) || 'Untitled Collection');
 
   const DisplayIcon = isScratchCollection ? IconCategory : IconBox;
 
@@ -638,7 +640,7 @@ const CollectionHeader = ({ collection, isScratchCollection }) => {
                             <div className="dropdown-icon">
                               <IconBox size={16} strokeWidth={1.5} />
                             </div>
-                            <span className="dropdown-label collection-header-dropdown-label">{col.name || 'Untitled Collection'}</span>
+                            <span className="dropdown-label collection-header-dropdown-label">{getCollectionDisplayName(col) || 'Untitled Collection'}</span>
                             {colTabCount > 0 && (
                               <span className="dropdown-tab-count">{colTabCount}</span>
                             )}

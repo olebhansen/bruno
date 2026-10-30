@@ -32,7 +32,8 @@ import {
   scriptEnvironmentUpdateEvent,
   runtimeVariablesUpdateEvent,
   streamDataReceived,
-  setDotEnvVariables
+  setDotEnvVariables,
+  setCollectionGitHead
 } from 'providers/ReduxStore/slices/collections';
 import { collectionAddEnvFileEvent, openCollectionEvent, hydrateCollectionWithUiStateSnapshot, persistActiveEnvironment, collectionVariablesUpdateEvent } from 'providers/ReduxStore/slices/collections/actions';
 import {
@@ -272,6 +273,10 @@ const useIpcEvents = () => {
       dispatch(workspaceEnvUpdateEvent({ processEnvVariables: val.processEnvVariables }));
     });
 
+    const removeCollectionGitHeadUpdateListener = ipcRenderer.on('main:collection-git-head-update', (val) => {
+      dispatch(setCollectionGitHead(val));
+    });
+
     const removeDotEnvFileUpdateListener = ipcRenderer.on('main:dotenv-file-update', (val) => {
       const { type, collectionUid, workspaceUid, filename, variables, exists, processEnvVariables } = val;
 
@@ -448,6 +453,7 @@ const useIpcEvents = () => {
       removeProcessEnvUpdatesListener();
       removeWorkspaceDotEnvUpdatesListener();
       removeDotEnvFileUpdateListener();
+      removeCollectionGitHeadUpdateListener();
       removeConsoleLogListener();
       removeConfigUpdatesListener();
       removeShowPreferencesListener();
