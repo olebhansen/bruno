@@ -1,6 +1,7 @@
 const { ipcMain } = require('electron');
 const { cloneGitRepository, getCollectionGitRepoUrl, listBranchesForRemoteUrl } = require('../utils/git');
 const { createDirectory, removeDirectory } = require('../utils/filesystem');
+const gitHeadWatcher = require('../app/git-head-watcher');
 
 const getCollectionGitRemoteUrl = async (collectionPath) => {
   try {
@@ -24,6 +25,14 @@ const handleListRemoteBranches = async (event, { url }) => {
   return listBranchesForRemoteUrl({ url: repositoryUrl });
 };
 
+const watchCollectionGitHead = (mainWindow, { collectionUid, collectionPath } = {}) => {
+  if (typeof collectionUid !== 'string' || typeof collectionPath !== 'string') {
+    throw new Error('Collection uid and path are required');
+  }
+
+  return gitHeadWatcher.addCollectionWatcher(mainWindow, collectionPath, collectionUid);
+};
+
 const registerGitIpc = (mainWindow) => {
   ipcMain.handle('renderer:clone-git-repository', async (event, { url, path, processUid, branch }) => {
     let directoryCreated = false;
@@ -45,8 +54,11 @@ const registerGitIpc = (mainWindow) => {
   );
 
   ipcMain.handle('renderer:list-remote-branches-for-url', handleListRemoteBranches);
+
+  ipcMain.handle('renderer:watch-collection-git-head', (event, args) => watchCollectionGitHead(mainWindow, args));
 };
 
 module.exports = registerGitIpc;
 module.exports.getCollectionGitRemoteUrl = getCollectionGitRemoteUrl;
 module.exports.handleListRemoteBranches = handleListRemoteBranches;
+module.exports.watchCollectionGitHead = watchCollectionGitHead;

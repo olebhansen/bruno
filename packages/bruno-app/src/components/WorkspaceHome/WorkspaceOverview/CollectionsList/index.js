@@ -24,6 +24,7 @@ import DeleteCollection from 'components/Sidebar/Collections/Collection/DeleteCo
 import ShareCollection from 'components/ShareCollection';
 import Dropdown from 'components/Dropdown';
 import StatusBadge from 'ui/StatusBadge';
+import useCollectionDisplayName from 'hooks/useCollectionDisplayName';
 import ConnectGitRemote from './ConnectGitRemote';
 import RemoveGitRemote from './RemoveGitRemote';
 import StyledWrapper from './StyledWrapper';
@@ -32,6 +33,7 @@ const CollectionsList = ({ workspace }) => {
   const dispatch = useDispatch();
   const { collections } = useSelector((state) => state.collections);
   const dropdownRefs = useRef({});
+  const getCollectionDisplayName = useCollectionDisplayName();
 
   const [renameCollectionModalOpen, setRenameCollectionModalOpen] = useState(false);
   const [removeCollectionModalOpen, setRemoveCollectionModalOpen] = useState(false);
@@ -349,7 +351,7 @@ const CollectionsList = ({ workspace }) => {
                   <div className="collection-icon-wrapper">
                     <IconBox size={18} strokeWidth={1.5} />
                   </div>
-                  <div className="collection-name">{collection.name}</div>
+                  <div className="collection-name">{getCollectionDisplayName(collection)}</div>
                   {!isDefaultWorkspace && collection.isGitBacked && (
                     <StatusBadge
                       status="info"

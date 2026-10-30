@@ -28,6 +28,7 @@ const { cookiesStore } = require('../store/cookies');
 const { parseLargeRequestWithRedaction } = require('../utils/parse');
 const { getWsClient } = require('../ipc/network/ws-event-handlers');
 const { hasSubDirectories } = require('../utils/filesystem');
+const gitHeadWatcher = require('../app/git-head-watcher');
 const { readCollectionForApiSpec } = require('../utils/collection-reader');
 const { transformProxyConfig } = require('@usebruno/requests');
 
@@ -1386,6 +1387,7 @@ const registerRendererEventHandlers = (mainWindow, watcher) => {
     if (watcher && mainWindow) {
       watcher.removeWatcher(collectionPath, mainWindow, collectionUid);
     }
+    gitHeadWatcher.removeCollectionWatcher(collectionUid);
 
     await require('./mount').unmount(collectionUid).catch(() => {});
 

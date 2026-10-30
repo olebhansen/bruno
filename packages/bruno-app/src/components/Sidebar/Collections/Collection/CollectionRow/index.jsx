@@ -57,6 +57,7 @@ import { useBetaFeature, BETA_FEATURES } from 'utils/beta-features';
 import StatusBadge from 'ui/StatusBadge';
 import CreateMockServerModal from 'components/MockServer/CreateMockServerModal';
 import useSidebarSelectionClick from 'hooks/useSidebarSelectionClick';
+import useCollectionDisplayName from 'hooks/useCollectionDisplayName';
 import { startBlockedDragTracking } from 'utils/dragBlockedCursor';
 
 const CollectionRow = ({ collection, searchText, openBulkMenu, children, isCollectionMultiDragDisabled, multiDragCollections }) => {
@@ -84,6 +85,8 @@ const CollectionRow = ({ collection, searchText, openBulkMenu, children, isColle
   const isSelected = selectedSidebarUids.includes(collection.uid);
   const isMultiSelected = isSelected && selectedSidebarUids.length > 1;
   const handleSelectionClick = useSidebarSelectionClick({ uid: collection.uid, searchText });
+  const getCollectionDisplayName = useCollectionDisplayName();
+  const collectionDisplayName = getCollectionDisplayName(collection);
   const menuDropdownRef = useRef(null);
 
   // 'Move into Workspace' is available for collections opened from outside the current workspace.
@@ -596,8 +599,8 @@ const CollectionRow = ({ collection, searchText, openBulkMenu, children, isColle
               onDoubleClick={handleCollectionDoubleClick}
             />
           </ActionIcon>
-          <div className="ml-1 w-full" id="sidebar-collection-name" title={collection.name}>
-            {collection.name}
+          <div className="ml-1 w-full" id="sidebar-collection-name" title={collectionDisplayName}>
+            {collectionDisplayName}
           </div>
           {isLoading ? <IconLoader2 className="animate-spin mx-1" size={18} strokeWidth={1.5} /> : null}
         </div>

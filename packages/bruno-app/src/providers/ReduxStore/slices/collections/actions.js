@@ -52,6 +52,7 @@ import {
   responseReceived,
   updateLastAction,
   setCollectionSecurityConfig,
+  setCollectionGitHead,
   updateCollectionVersion as _updateCollectionVersion,
   collectionAddOauth2CredentialsByUrl,
   collectionClearOauth2CredentialsByUrlAndCredentialsId,
@@ -3044,6 +3045,11 @@ export const openCollectionEvent = (uid, pathname, brunoConfig, options = {}) =>
         .validate(collection)
         .then(() => dispatch(_createCollection({ ...collection, securityConfig })))
         .then(() => {
+          ipcRenderer
+            .invoke('renderer:watch-collection-git-head', { collectionUid: uid, collectionPath: pathname })
+            .then((gitHead) => gitHead && dispatch(setCollectionGitHead({ collectionUid: uid, gitHead })))
+            .catch((err) => console.error('Failed to read git branch of collection', err));
+
           const currentState = getState();
 
           const currentWorkspace = currentState.workspaces.workspaces.find(
