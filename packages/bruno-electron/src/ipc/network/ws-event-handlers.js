@@ -69,7 +69,7 @@ const prepareWsRequest = async (item, collection, environment, runtimeVariables,
   }
 
   const envVars = getEnvVars(environment);
-  const processEnvVars = getProcessEnvVars(collection.uid);
+  const processEnvVars = getProcessEnvVars(collection.uid, environment?.name);
   const { promptVariables = {} } = collection;
 
   let wsRequest = {

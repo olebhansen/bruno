@@ -405,7 +405,7 @@ const fetchGqlSchemaHandler = async (event, endpoint, environment, _request, col
     const runtimeVars = collection.runtimeVariables;
 
     // Precedence: runtimeVars > requestVariables > folderVars > envVars > collectionVariables > globalEnvironmentVars
-    const processEnvVars = getProcessEnvVars(collection.uid);
+    const processEnvVars = getProcessEnvVars(collection.uid, environment?.name);
     const resolvedVars = merge(
       {},
       globalEnvironmentVars,
@@ -1388,7 +1388,7 @@ const registerNetworkIpc = (mainWindow) => {
     let seq = 0;
     const collectionUid = collection.uid;
     const envVars = getEnvVars(environment);
-    const processEnvVars = getProcessEnvVars(collectionUid);
+    const processEnvVars = getProcessEnvVars(collectionUid, environment?.name);
     const response = await runRequest({ item, collection, envVars, processEnvVars, runtimeVariables, runInBackground: false });
     if (response.stream) {
       const stream = response.stream;
@@ -1465,7 +1465,7 @@ const registerNetworkIpc = (mainWindow) => {
       scriptingConfig.runtime = getJsSandboxRuntime(collection);
       scriptingConfig.cacheModules = false;
       const envVars = getEnvVars(environment);
-      const processEnvVars = getProcessEnvVars(collectionUid);
+      const processEnvVars = getProcessEnvVars(collectionUid, environment?.name);
       let stopRunnerExecution = false;
       let currentAbortController;
       // Tracks the outer runner item currently executing so a nested bru.runRequest

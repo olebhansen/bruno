@@ -1312,6 +1312,18 @@ export const getTotalRequestCountInCollection = (collection) => {
   return count;
 };
 
+// Mirrors getProcessEnvVars in bruno-electron: `.env.<environment name>` in the collection root
+// overrides `.env` while that environment is active
+const getActiveEnvironmentDotEnvVariables = (collection) => {
+  const activeEnvironment = findEnvironmentInCollection(collection, collection.activeEnvironmentUid);
+  if (!activeEnvironment) {
+    return {};
+  }
+
+  const dotEnvFile = find(collection.dotEnvFiles, (f) => f.filename === `.env.${activeEnvironment.name}`);
+  return dotEnvFile ? toVariablesMap(dotEnvFile.variables) : {};
+};
+
 export const getAllVariables = (collection, item) => {
   if (!collection) return {};
   const envVariables = getEnvironmentVariables(collection);
@@ -1325,7 +1337,8 @@ export const getAllVariables = (collection, item) => {
   // Merge workspace and collection processEnvVariables (collection takes priority)
   const mergedProcessEnvVariables = {
     ...workspaceProcessEnvVariables,
-    ...processEnvVariables
+    ...processEnvVariables,
+    ...getActiveEnvironmentDotEnvVariables(collection)
   };
 
   const mergedVariables = {

@@ -193,7 +193,7 @@ const fetchSpecFromSource = async ({ collectionUid, collectionPath, sourceUrl, e
       targetEnvironment: _.find(environments, (e) => e.uid === activeEnvironmentUid)
     });
     const envVars = getEnvVars(environment);
-    const processEnvVars = getProcessEnvVars(collectionUid);
+    const processEnvVars = getProcessEnvVars(collectionUid, environment?.name);
     const { proxyMode, proxyConfig, httpsAgentRequestFields, interpolationOptions } = await getCertsAndProxyConfig({
       collectionUid,
       collection: { promptVariables: {} },
