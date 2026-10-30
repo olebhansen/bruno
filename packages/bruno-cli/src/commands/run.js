@@ -658,19 +658,28 @@ const handler = async function (argv) {
       formats['junit'] = reporterJunit;
     }
 
-    // load .env file at root of collection if it exists
-    const dotEnvPath = path.join(collectionPath, '.env');
-    const dotEnvExists = await exists(dotEnvPath);
+    // load .env, then .env.<environment name> for the selected environment, from the root of the
+    // collection. Mirrors getProcessEnvVars in bruno-electron: the environment specific file
+    // overrides .env per key. The name can come from an environment file's own `name`, so only a
+    // bare file name is accepted.
     const processEnvVars = {
       ...process.env
     };
-    if (dotEnvExists) {
-      const content = fs.readFileSync(dotEnvPath, 'utf8');
-      const jsonData = parseDotEnv(content);
+    const selectedEnvironmentName = envVars.__name__;
+    const dotEnvFilenames = ['.env'];
+    if (selectedEnvironmentName && isSafeFileName(selectedEnvironmentName)) {
+      dotEnvFilenames.push(`.env.${selectedEnvironmentName}`);
+    }
+    for (const dotEnvFilename of dotEnvFilenames) {
+      const dotEnvPath = path.join(collectionPath, dotEnvFilename);
+      if (await exists(dotEnvPath)) {
+        const content = fs.readFileSync(dotEnvPath, 'utf8');
+        const jsonData = parseDotEnv(content);
 
-      forOwn(jsonData, (value, key) => {
-        processEnvVars[key] = value;
-      });
+        forOwn(jsonData, (value, key) => {
+          processEnvVars[key] = value;
+        });
+      }
     }
 
     let requestItems = [];

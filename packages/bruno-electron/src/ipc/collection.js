@@ -2056,7 +2056,7 @@ const registerRendererEventHandlers = (mainWindow, watcher) => {
           targetEnvironment: _.find(environments, (e) => e.uid === activeEnvironmentUid)
         });
         const envVars = getEnvVars(environment);
-        const processEnvVars = getProcessEnvVars(collectionUid);
+        const processEnvVars = getProcessEnvVars(collectionUid, environment?.name);
         const partialItem = { uid: itemUid };
         const requestTreePath = getTreePathFromCollectionToItem(collection, partialItem);
         mergeVars(collection, requestCopy, requestTreePath);
@@ -2190,7 +2190,7 @@ const registerRendererEventHandlers = (mainWindow, watcher) => {
           targetEnvironment: _.find(environments, (e) => e.uid === activeEnvironmentUid)
         });
         const envVars = getEnvVars(environment);
-        const processEnvVars = getProcessEnvVars(collectionUid);
+        const processEnvVars = getProcessEnvVars(collectionUid, environment?.name);
         const partialItem = { uid: itemUid };
         const requestTreePath = getTreePathFromCollectionToItem(collection, partialItem);
         mergeVars(collection, requestCopy, requestTreePath);

@@ -2,11 +2,22 @@ const fs = require('fs');
 const path = require('path');
 const chokidar = require('chokidar');
 const { parseDotEnv } = require('@usebruno/filestore');
-const { setDotEnvVars, clearDotEnvVars, setWorkspaceDotEnvVars, clearWorkspaceDotEnvVars } = require('../store/process-env');
+const {
+  setDotEnvVars,
+  clearDotEnvVars,
+  setEnvSpecificDotEnvVars,
+  clearEnvSpecificDotEnvVars,
+  clearAllEnvSpecificDotEnvVars,
+  setWorkspaceDotEnvVars,
+  clearWorkspaceDotEnvVars
+} = require('../store/process-env');
 
 const isDotEnvFile = (filename) => {
   return filename === '.env' || filename.startsWith('.env.');
 };
+
+// `.env.<environment name>` holds the process.env variables for that environment
+const getEnvironmentNameFromDotEnvFilename = (filename) => filename.slice('.env.'.length);
 
 const parseVariablesToArray = (envObject) => {
   return Object.entries(envObject).map(([name, value]) => ({
@@ -25,7 +36,7 @@ const DEFAULT_WATCHER_OPTIONS = {
 };
 
 const createFileHandler = (win, options) => (pathname) => {
-  const { type, uid, uidKey, pathKey, basePath, setEnvVars } = options;
+  const { type, uid, uidKey, pathKey, basePath, setEnvVars, setEnvSpecificVars } = options;
   const filename = path.basename(pathname);
 
   if (!isDotEnvFile(filename)) {
@@ -38,6 +49,8 @@ const createFileHandler = (win, options) => (pathname) => {
 
     if (filename === '.env') {
       setEnvVars(jsonData);
+    } else if (setEnvSpecificVars) {
+      setEnvSpecificVars(getEnvironmentNameFromDotEnvFilename(filename), jsonData);
     }
 
     const variables = parseVariablesToArray(jsonData);
@@ -62,7 +75,7 @@ const createFileHandler = (win, options) => (pathname) => {
 };
 
 const createUnlinkHandler = (win, options) => (pathname) => {
-  const { type, uid, uidKey, pathKey, basePath, clearEnvVars } = options;
+  const { type, uid, uidKey, pathKey, basePath, clearEnvVars, clearEnvSpecificVars } = options;
   const filename = path.basename(pathname);
 
   if (!isDotEnvFile(filename)) {
@@ -71,6 +84,8 @@ const createUnlinkHandler = (win, options) => (pathname) => {
 
   if (filename === '.env') {
     clearEnvVars();
+  } else if (clearEnvSpecificVars) {
+    clearEnvSpecificVars(getEnvironmentNameFromDotEnvFilename(filename));
   }
 
   if (!win.isDestroyed()) {
@@ -115,7 +130,9 @@ class DotEnvWatcher {
       uidKey: 'collectionUid',
       basePath: collectionPath,
       setEnvVars: (data) => setDotEnvVars(collectionUid, data),
-      clearEnvVars: () => clearDotEnvVars(collectionUid)
+      clearEnvVars: () => clearDotEnvVars(collectionUid),
+      setEnvSpecificVars: (environmentName, data) => setEnvSpecificDotEnvVars(collectionUid, environmentName, data),
+      clearEnvSpecificVars: (environmentName) => clearEnvSpecificDotEnvVars(collectionUid, environmentName)
     };
 
     const handleFile = createFileHandler(win, handlerOptions);
@@ -138,6 +155,7 @@ class DotEnvWatcher {
     }
     if (collectionUid) {
       clearDotEnvVars(collectionUid);
+      clearAllEnvSpecificDotEnvVars(collectionUid);
     }
   }
 

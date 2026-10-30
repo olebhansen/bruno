@@ -16,7 +16,8 @@ import {
   getUniqueTagsFromItems,
   getCollectionVersion,
   isCollectionItemCollapsed,
-  getWorkspaceCollections
+  getWorkspaceCollections,
+  getAllVariables
 } from './index';
 import * as platformUtils from 'utils/common/platform';
 
@@ -1009,5 +1010,44 @@ describe('getWorkspaceCollections', () => {
 
       expect(listFor()).toEqual([]);
     });
+  });
+});
+
+describe('getAllVariables — environment specific .env files', () => {
+  const dotEnvVariable = (name, value) => ({ name, value, enabled: true, secret: false });
+
+  const buildCollection = (activeEnvironmentUid) => ({
+    uid: 'c1',
+    items: [],
+    root: {},
+    environments: [
+      { uid: 'env-prod', name: 'prod', variables: [] },
+      { uid: 'env-test', name: 'test', variables: [] }
+    ],
+    activeEnvironmentUid,
+    workspaceProcessEnvVariables: { HOST: 'workspace-host' },
+    processEnvVariables: { TOKEN: 'base-token', USER: 'base-user' },
+    dotEnvFiles: [
+      { filename: '.env', exists: true, variables: [dotEnvVariable('TOKEN', 'base-token'), dotEnvVariable('USER', 'base-user')] },
+      { filename: '.env.prod', exists: true, variables: [dotEnvVariable('TOKEN', 'prod-token'), dotEnvVariable('HOST', 'prod-host')] }
+    ]
+  });
+
+  it('overrides .env per key with the file for the active environment', () => {
+    const { env } = getAllVariables(buildCollection('env-prod')).process;
+
+    expect(env).toEqual({ HOST: 'prod-host', TOKEN: 'prod-token', USER: 'base-user' });
+  });
+
+  it('uses only .env for an environment without its own file', () => {
+    const { env } = getAllVariables(buildCollection('env-test')).process;
+
+    expect(env).toEqual({ HOST: 'workspace-host', TOKEN: 'base-token', USER: 'base-user' });
+  });
+
+  it('uses only .env when no environment is active', () => {
+    const { env } = getAllVariables(buildCollection(undefined)).process;
+
+    expect(env.TOKEN).toBe('base-token');
   });
 });

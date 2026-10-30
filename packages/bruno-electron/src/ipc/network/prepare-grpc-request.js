@@ -158,7 +158,7 @@ const buildGrpcRequest = async (item, collection, environment, runtimeVariables)
     }
   });
 
-  const processEnvVars = getProcessEnvVars(collection.uid);
+  const processEnvVars = getProcessEnvVars(collection.uid, environment?.name);
   const envVars = getEnvVars(environment);
 
   let grpcRequest = {
