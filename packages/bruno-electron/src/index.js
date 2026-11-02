@@ -76,6 +76,8 @@ const { cookiesStore } = require('./store/cookies');
 const SystemMonitor = require('./app/system-monitor');
 const { getIsRunningInRosetta } = require('./utils/arch');
 const { handleAppProtocolUrl, getAppProtocolUrlFromArgv } = require('./utils/deeplink');
+const { getOpenCollectionPathsFromArgv } = require('./utils/open-collection-argv');
+const { openLaunchCollections } = require('./app/launch-collections');
 
 const systemMonitor = new SystemMonitor();
 const terminalManager = new TerminalManager();
@@ -153,9 +155,13 @@ const closeAllWatchers = () => Promise.allSettled([
 // Parse protocol URL from command line arguments (if any)
 appProtocolUrl = getAppProtocolUrlFromArgv(process.argv);
 
+// Resolved against this process's working directory. A second launch hands the resolved paths
+// to the running instance as single-instance lock data, see `second-instance` below.
+const launchCollectionPaths = getOpenCollectionPathsFromArgv(process.argv, process.cwd());
+
 // Single instance lock - ensures only one instance of Bruno runs at a time (enabled by default)
 const useSingleInstance = process.env.DISABLE_SINGLE_INSTANCE !== 'true';
-const gotTheLock = useSingleInstance ? app.requestSingleInstanceLock() : true;
+const gotTheLock = useSingleInstance ? app.requestSingleInstanceLock({ launchCollectionPaths }) : true;
 
 if (useSingleInstance && !gotTheLock) {
   // Another instance is already running, quit immediately
@@ -191,14 +197,21 @@ if (useSingleInstance && !gotTheLock) {
   }
 
   // Handle second instance attempts - focus primary window on all platforms
-  app.on('second-instance', (event, commandLine) => {
+  app.on('second-instance', (event, commandLine, workingDirectory, additionalData) => {
     focusMainWindow();
     // Extract and handle protocol URL from the second instance attempt
     const url = getAppProtocolUrlFromArgv(commandLine);
     if (url) {
       handleAppProtocolUrl(url);
     }
+    // A launcher without lock data (an older build) only leaves its command line, which
+    // Chromium may have reordered, so the paths it gives are a best effort
+    openLaunchCollections(
+      additionalData?.launchCollectionPaths ?? getOpenCollectionPathsFromArgv(commandLine, workingDirectory)
+    );
   });
+
+  openLaunchCollections(launchCollectionPaths);
 }
 
 // Prepare the renderer once the app is ready

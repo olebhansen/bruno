@@ -1,4 +1,10 @@
-import { newHttpRequest, tryResponseExample } from './actions';
+import toast from 'react-hot-toast';
+import { newHttpRequest, tryResponseExample, selectCollection, openLaunchCollections } from './actions';
+
+jest.mock('react-hot-toast', () => ({
+  __esModule: true,
+  default: { error: jest.fn(), success: jest.fn() }
+}));
 
 const mockUuid = jest.fn();
 
@@ -187,6 +193,64 @@ describe('collection actions', () => {
         expect.stringContaining('Untitled 3.yml'),
         expect.objectContaining({ name: 'Untitled 3' })
       );
+    });
+  });
+
+  describe('selectCollection', () => {
+    const buildGetState = (collection) => () => ({
+      app: { preferences: {} },
+      collections: {
+        collections: [{ uid: 'collection-uid', pathname: 'C:\bruno\collection', brunoConfig: {}, items: [], ...collection }]
+      }
+    });
+    const dispatchedTypes = (dispatch) => dispatch.mock.calls.map(([action]) => action?.type);
+
+    it('mounts, expands and opens the settings tab of a collection that is not loaded yet', () => {
+      const dispatch = jest.fn((action) => (typeof action === 'function' ? Promise.resolve() : action));
+
+      selectCollection('collection-uid')(dispatch, buildGetState({ mountStatus: 'unmounted', collapsed: true }));
+
+      expect(dispatch.mock.calls.some(([action]) => typeof action === 'function')).toBe(true);
+      expect(dispatchedTypes(dispatch)).toEqual(expect.arrayContaining(['collections/toggleCollection', 'tabs/addTab']));
+      const tab = dispatch.mock.calls.map(([action]) => action).find((action) => action?.type === 'tabs/addTab');
+      expect(tab.payload).toEqual(expect.objectContaining({ uid: 'collection-uid', collectionUid: 'collection-uid', type: 'collection-settings' }));
+    });
+
+    it('only opens the settings tab of a collection that is already mounted and expanded', () => {
+      const dispatch = jest.fn((action) => action);
+
+      selectCollection('collection-uid')(dispatch, buildGetState({ mountStatus: 'mounted', collapsed: false }));
+
+      expect(dispatchedTypes(dispatch)).toEqual(['tabs/addTab']);
+    });
+
+    it('does nothing for an unknown collection', () => {
+      const dispatch = jest.fn();
+
+      selectCollection('other-uid')(dispatch, buildGetState({}));
+
+      expect(dispatch).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('openLaunchCollections', () => {
+    it('opens the collections with select and reports each one that failed', async () => {
+      window.ipcRenderer.invoke.mockResolvedValue({
+        opened: ['C:\collections\a'],
+        failed: [{ path: 'C:\collections\b', error: 'The collection is not valid' }],
+        invalid: ['C:\collections\missing']
+      });
+
+      await openLaunchCollections(['C:\collections\a', 'C:\collections\b', 'C:\collections\missing'])();
+
+      expect(window.ipcRenderer.invoke).toHaveBeenCalledWith(
+        'renderer:open-multiple-collections',
+        ['C:\collections\a', 'C:\collections\b', 'C:\collections\missing'],
+        { silent: true, select: true, dontSendDisplayErrors: true }
+      );
+      expect(toast.error).toHaveBeenCalledWith('Cannot open collection "C:\collections\b": The collection is not valid');
+      expect(toast.error).toHaveBeenCalledWith('Cannot open collection "C:\collections\missing": no such folder');
+      expect(toast.error).toHaveBeenCalledTimes(2);
     });
   });
 });

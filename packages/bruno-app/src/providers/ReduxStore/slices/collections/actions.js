@@ -3123,6 +3123,54 @@ export const openMultipleCollections = (collectionPaths, options = {}) => () => 
   });
 };
 
+// Does what a click on the collection row in the sidebar does
+export const selectCollection = (collectionUid) => (dispatch, getState) => {
+  const collection = findCollectionByUid(getState().collections.collections, collectionUid);
+  if (!collection) {
+    return;
+  }
+
+  if (collection.mountStatus !== 'mounted' && collection.mountStatus !== 'mounting') {
+    dispatch(mountCollection({
+      collectionUid: collection.uid,
+      collectionPathname: collection.pathname,
+      brunoConfig: collection.brunoConfig
+    })).catch((err) => console.error('Failed to mount collection:', err));
+  }
+
+  if (collection.collapsed) {
+    dispatch(toggleCollection(collection.uid));
+    if (!collection.securityConfig?.jsSandboxMode) {
+      dispatch(saveCollectionSecurityConfig(collection.uid, { jsSandboxMode: 'safe' }));
+    }
+  }
+
+  dispatch(addTab({
+    uid: collection.uid,
+    collectionUid: collection.uid,
+    type: 'collection-settings'
+  }));
+};
+
+// Opens the collections passed with --open-collection. Each one is selected once its
+// main:collection-opened event has been handled.
+export const openLaunchCollections = (collectionPaths) => async () => {
+  const { ipcRenderer } = window;
+
+  const { failed, invalid } = await ipcRenderer.invoke('renderer:open-multiple-collections', collectionPaths, {
+    silent: true,
+    select: true,
+    dontSendDisplayErrors: true
+  });
+
+  for (const { path, error } of failed) {
+    toast.error(`Cannot open collection "${path}": ${error}`);
+  }
+  for (const path of invalid) {
+    toast.error(`Cannot open collection "${path}": no such folder`);
+  }
+};
+
 export const collectionAddEnvFileEvent = (payload) => (dispatch, getState) => {
   const { data: environment, meta } = payload;
 
