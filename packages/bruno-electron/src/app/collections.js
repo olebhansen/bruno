@@ -97,7 +97,7 @@ const openCollection = async (win, watcher, collectionPath, options = {}) => {
       const { size, filesCount } = await getCollectionStats(collectionPath);
       brunoConfig.size = size;
       brunoConfig.filesCount = filesCount;
-      win.webContents.send('main:collection-opened', collectionPath, uid, brunoConfig, { silent: !!options.silent });
+      win.webContents.send('main:collection-opened', collectionPath, uid, brunoConfig, { silent: !!options.silent, select: !!options.select });
       return {
         path: collectionPath,
         opened: true,
@@ -133,7 +133,7 @@ const openCollection = async (win, watcher, collectionPath, options = {}) => {
     brunoConfig.size = size;
     brunoConfig.filesCount = filesCount;
 
-    win.webContents.send('main:collection-opened', collectionPath, uid, brunoConfig, { silent: !!options.silent });
+    win.webContents.send('main:collection-opened', collectionPath, uid, brunoConfig, { silent: !!options.silent, select: !!options.select });
     ipcMain.emit('main:collection-opened', win, collectionPath, uid, brunoConfig);
     return {
       path: collectionPath,

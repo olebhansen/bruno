@@ -34,7 +34,7 @@ import {
   streamDataReceived,
   setDotEnvVariables
 } from 'providers/ReduxStore/slices/collections';
-import { collectionAddEnvFileEvent, openCollectionEvent, hydrateCollectionWithUiStateSnapshot, persistActiveEnvironment, collectionVariablesUpdateEvent } from 'providers/ReduxStore/slices/collections/actions';
+import { collectionAddEnvFileEvent, openCollectionEvent, openLaunchCollections, selectCollection, hydrateCollectionWithUiStateSnapshot, persistActiveEnvironment, collectionVariablesUpdateEvent } from 'providers/ReduxStore/slices/collections/actions';
 import {
   workspaceOpenedEvent,
   workspaceConfigUpdatedEvent,
@@ -143,7 +143,10 @@ const useIpcEvents = () => {
       try {
         await dispatch(openCollectionEvent(uid, pathname, brunoConfig, options));
       } finally {
-        dispatch(hydrateSnapshotForOpenedCollection(pathname));
+        await dispatch(hydrateSnapshotForOpenedCollection(pathname));
+      }
+      if (options?.select) {
+        dispatch(selectCollection(uid));
       }
     });
 
@@ -155,8 +158,15 @@ const useIpcEvents = () => {
       dispatch(setIsOpeningCollection(true));
     });
 
+    // Launch collections join the active workspace, so they wait until it is restored
+    let activeWorkspaceRestored = Promise.resolve();
     const removeWorkspacesReadyListener = ipcRenderer.on('main:workspaces-ready', () => {
-      dispatch(restoreActiveWorkspaceFromSnapshot());
+      activeWorkspaceRestored = dispatch(restoreActiveWorkspaceFromSnapshot());
+    });
+
+    const removeOpenLaunchCollectionsListener = ipcRenderer.on('main:open-launch-collections', async (collectionPaths) => {
+      await activeWorkspaceRestored;
+      dispatch(openLaunchCollections(collectionPaths));
     });
 
     const removeWorkspaceConfigUpdatedListener = ipcRenderer.on('main:workspace-config-updated', (workspacePath, workspaceUid, workspaceConfig) => {
@@ -435,6 +445,7 @@ const useIpcEvents = () => {
       removeOpenWorkspaceListener();
       removeOpenCollectionModalListener();
       removeWorkspacesReadyListener();
+      removeOpenLaunchCollectionsListener();
       removeWorkspaceConfigUpdatedListener();
       removeWorkspaceEnvironmentAddedListener();
       removeWorkspaceEnvironmentChangedListener();

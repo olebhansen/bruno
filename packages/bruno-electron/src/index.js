@@ -76,6 +76,8 @@ const { cookiesStore } = require('./store/cookies');
 const SystemMonitor = require('./app/system-monitor');
 const { getIsRunningInRosetta } = require('./utils/arch');
 const { handleAppProtocolUrl, getAppProtocolUrlFromArgv } = require('./utils/deeplink');
+const { getUserArgs, getOpenCollectionPaths } = require('./utils/launch-args');
+const { openLaunchCollections, handleSecondLaunch } = require('./app/launch-collections');
 
 const systemMonitor = new SystemMonitor();
 const terminalManager = new TerminalManager();
@@ -153,9 +155,14 @@ const closeAllWatchers = () => Promise.allSettled([
 // Parse protocol URL from command line arguments (if any)
 appProtocolUrl = getAppProtocolUrlFromArgv(process.argv);
 
+// A second launch hands its own arguments and working directory to the running instance as
+// single-instance lock data, see `second-instance` below. Its command line as Electron reports
+// it there carries switches Chromium adds and may be reordered.
+const launchArgs = getUserArgs(process.argv, process.defaultApp);
+
 // Single instance lock - ensures only one instance of Bruno runs at a time (enabled by default)
 const useSingleInstance = process.env.DISABLE_SINGLE_INSTANCE !== 'true';
-const gotTheLock = useSingleInstance ? app.requestSingleInstanceLock() : true;
+const gotTheLock = useSingleInstance ? app.requestSingleInstanceLock({ args: launchArgs, cwd: process.cwd() }) : true;
 
 if (useSingleInstance && !gotTheLock) {
   // Another instance is already running, quit immediately
@@ -191,14 +198,20 @@ if (useSingleInstance && !gotTheLock) {
   }
 
   // Handle second instance attempts - focus primary window on all platforms
-  app.on('second-instance', (event, commandLine) => {
+  app.on('second-instance', (event, commandLine, workingDirectory, additionalData) => {
     focusMainWindow();
     // Extract and handle protocol URL from the second instance attempt
     const url = getAppProtocolUrlFromArgv(commandLine);
     if (url) {
       handleAppProtocolUrl(url);
     }
+    // Launches by builds without lock data (older ones) only focus the window
+    if (Array.isArray(additionalData?.args)) {
+      handleSecondLaunch(mainWindow, launchArgs, additionalData);
+    }
   });
+
+  openLaunchCollections(getOpenCollectionPaths(launchArgs, process.cwd()));
 }
 
 // Prepare the renderer once the app is ready
